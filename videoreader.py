@@ -30,17 +30,17 @@ class VideoReader:
 		self.ini_time = 0.0
 		self.h = 0.0
 		self.w = 0.0
-		if self.path=='bebop_cam':
+		if self.path=='bebop':
 			self.bridge = CvBridge()
 			self.h = res[1]
 			self.w = res[0]
 		else:
 			if sync:
-				self.video_capture = cv2.VideoCapture(src)
+				self.video_capture = cv2.VideoCapture(self.path)
 				self.w = int(self.video_capture.get(3))
 				self.h = int(self.video_capture.get(4))
 			else:
-				self.video_capture = VideoCaptureAsync(src)
+				self.video_capture = VideoCaptureAsync(self.path)
 				self.w = int(self.video_capture.cap.get(3))
 				self.h = int(self.video_capture.cap.get(4))
 
@@ -61,14 +61,13 @@ class VideoReader:
 			self.writable=False
 
 	def start(self):
-		if self.path == 'bebop_cam':
+		if self.path=='bebop':
 			# start a thread to read frames from the file video video_capture
 			self.t = threading.Thread(target=self.callback1, args=())
 			self.t.daemon = True
 			self.t.start()
 			
 			rospy.init_node('image_converter', anonymous=True)
-			
 		else:
 			self.video_capture.start()
 			
@@ -84,14 +83,14 @@ class VideoReader:
 
 	def read(self):
 		go_read=True
-		if self.path=='bebop_cam':
+		if self.path=='bebop':
 			ret = True
 		else:
 			ret, self.frame = self.video_capture.read()
 			if ret:
-				self.frame = cv2.resize(self.frame, (self.w, self.h), interpolation=cv2.INTER_NEAREST)
-		
-		value = self.frame
+				self.frame = cv2.resize(self.frame, (self.w, self.h), interpolation=cv2.INTER_NEAREST)		
+
+		value=self.frame
 		go_read=False
 
 		return (ret, value)

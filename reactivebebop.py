@@ -34,10 +34,11 @@ class ReactiveBebop:
 		if h_type==0: # Ayuda para menu
 			print('\n\n\n\
 [0] Modo manual \n\
-[1] Seleccionar target (solo funciona en modo automatico)\n\
-[2] Seleccionar velocidad [0.0 - 1.0]\n\
-[3] Empezar/Parar grabacion\n\
-[4] Mostrar % bateria\n\
+[1] Seleccionar target video principal (solo funciona en modo automatico)\n\
+[2] Seleccionar target video secundario \n\
+[3] Seleccionar velocidad [0.0 - 1.0]\n\
+[4] Empezar/Parar grabacion\n\
+[5] Mostrar % bateria\n\
 [p] Parada de emergencia\n\
 [q] Salir del programa\n\
 [h] Help\n\
@@ -61,17 +62,19 @@ class ReactiveBebop:
 [h] Help\n\
 \n\n\n')
 
-	def __init__(self, target=None, tracks=[], current_track=None):
+	def __init__(self, res, target=None, tracks=[], current_track=None):
 		self.target = target #id_track
 		self.tracks = tracks
 		self.current_track = current_track
-		self.min_x = 500.0 #480.0
-		self.max_x = 780.0 #800.0
-		self.min_y = 180.0
-		self.max_y = 540.0
+		self.cam_tracks = []
+		self.current_cam_track = None
+		self.min_x = 0.4*res[0]
+		self.max_x = 0.6*res[0]
+		self.min_y = 0.4*res[1]
+		self.max_y = 0.6*res[1]
 		self.auto = True
 		self.t_menu = True
-		self.vel_av = 0.2
+		self.vel_av = 0.1
 		self.vel_giro = 0.07
 		self.min_height = 60.0
 		self.max_height = 80.0
@@ -94,6 +97,14 @@ class ReactiveBebop:
 
 	def update_tracks(self, confirmed_tracks):
 		self.tracks=confirmed_tracks
+
+	def update_cam_tracks(self, confirmed_tracks):
+		self.cam_tracks=confirmed_tracks
+
+		if self.current_cam_track<>None:
+			if self.current_cam_track.state<>2:
+				self.move([' '])
+				self.current_cam_track=None
 	
 	def update_target(self, target):
 		self.target=target
@@ -107,51 +118,51 @@ class ReactiveBebop:
 
 		for move in moves:
 			if move==' ': # despegar
-				#self.takeoff_pub.publish(Empty())
-				print('move: '+move)
+				self.takeoff_pub.publish(Empty())
+				#print('move: '+move)
 			elif move=='l': # aterrizar
-				#self.land_pub.publish(Empty())
-				print('move: '+move)
+				self.land_pub.publish(Empty())
+				#print('move: '+move)
 			elif move=='w': # avanzar
-				#msg.linear.x = self.vel_av
-				print('move: '+move)
+				msg.linear.x = self.vel_av
+				#print('move: '+move)
 			elif move=='a': # desplazar a la izda
-				#msg.linear.y = self.vel_av	
-				print('move: '+move)
+				msg.linear.y = self.vel_av	
+				#print('move: '+move)
 			elif move=='s': # retroceder
-				#msg.linear.x = -self.vel_av
-				print('move: '+move)
+				msg.linear.x = -self.vel_av
+				#print('move: '+move)
 			elif move=='d': # desplazar a la derecha
-				#msg.linear.y = -self.vel_av
-				print('move: '+move)
+				msg.linear.y = -self.vel_av
+				#print('move: '+move)
 			elif move=='8': # ascender
-				#msg.linear.z = self.vel_giro
-				print('move: '+move)
+				msg.linear.z = self.vel_giro
+				#print('move: '+move)
 			elif move=='4': # rotar izda
-				#msg.angular.z = self.vel_giro
-				print('move: '+move)
+				msg.angular.z = self.vel_giro
+				#print('move: '+move)
 			elif move=='6': # rotar dcha
-				#msg.angular.z = -self.vel_giro
-				print('move: '+move)
+				msg.angular.z = -self.vel_giro
+				#print('move: '+move)
 			elif move=='2': # descender
-				#msg.linear.z = -self.vel_giro
-				print('move: '+move)
+				msg.linear.z = -self.vel_giro
+				#print('move: '+move)
 			elif move=='5': # para
-				#msg.linear.z = 0
-				print('move: '+move)
-				#msg.angular.z = 0
-				#msg.linear.x = 0
-				#msg.linear.y = 0
+				msg.linear.z = 0
+				#print('move: '+move)
+				msg.angular.z = 0
+				msg.linear.x = 0
+				msg.linear.y = 0
 			elif move=='e': # cambiar de modo
 				self.auto=True
-				print('move: '+move)
+				#print('move: '+move)
 				self.print_help(0)
 			elif move=='p': # parada de emergencia
-				#self.reset_pub.publish(Empty())
-				print('move: '+move)
+				self.reset_pub.publish(Empty())
+				#print('move: '+move)
 			elif move=='h': # ayuda
-				#self.print_help(1)
-				print('move: '+move)
+				self.print_help(1)
+				#print('move: '+move)
 		
 		# Si no mandamos un mensaje cada 0.1s
 		# el dron detecta que hay un error
@@ -183,8 +194,8 @@ class ReactiveBebop:
 					"""
 					if h < self.min_height:
 						moves.append('w')
-					#elif h > self.max_height:
-					#	moves.append('s')
+					elif h > self.max_height:
+						moves.append('s')
 
 					if not moves:
 						moves.append('5')
@@ -248,8 +259,33 @@ class ReactiveBebop:
 				self.target = new_target
 				self.current_track = [tr for tr in self.tracks if tr.track_id==new_target][0]
 				print('Target Updated')
+
+		elif option=='2': # Seleccion de target
+			if self.cam_tracks!=[]:
+				ids = [t.track_id for t in self.cam_tracks]
+				print('\'-1\'Exit.\n Select target: ')
+				try:
+					new_target = input()
+				except:
+					new_target = -2
+				
+				while( (not new_target in ids) and new_target != -1):
+					print('Bad Target. Select one of this: ')
+					ids = [t.track_id for t in self.cam_tracks]
+					print(ids)
+					print('\'-1\'Exit.\n Select target: ')
+					try:
+						new_target = input()
+					except:
+						new_target = -2
+				
+				if new_target != -1:
+					self.current_cam_track = [tr for tr in self.cam_tracks if tr.track_id==new_target][0]
+					print('Target Updated')
+			else:
+				print('No hay video secundario o bien no se han detectado tracks en el\n')
 			
-		elif option=='2': # Seleccion de velocidad
+		elif option=='3': # Seleccion de velocidad
 			print('Velocidad actual de giro: '+str(self.vel_giro)+'\nIndique nueva velocidad [0.0 - 1.0]: ')
 			try:
 				v = input()
@@ -271,7 +307,7 @@ class ReactiveBebop:
 			except:
 				print('Error en la entrada de velocidad')
 			
-		elif option=='3': # Empezar/Parar grabacion
+		elif option=='4': # Empezar/Parar grabacion
 			if not self.record:
 				self.record = True
 				self.video_pub.publish(True)
@@ -281,7 +317,7 @@ class ReactiveBebop:
 				self.video_pub.publish(False)
 				print('Se ha detenido la grabacion\n')
 			
-		elif option=='4': # Mostrar % bateria
+		elif option=='5': # Mostrar % bateria
 			self.show_battery = True
 			print('Bateria: '+self.battery+'%')
 			self.show_battery = False
@@ -301,7 +337,7 @@ class ReactiveBebop:
 		while self.menu:
 			option = getch()
 			if (option=='0' or option=='1' or option=='2'
-				or option=='3' or option=='4' or option=='p'
+				or option=='3' or option=='4' or option=='5' or option=='p'
 				or option=='h'):
 				self.menu(option)
 
