@@ -1,0 +1,7 @@
+<?xml version="1.0"?>
+<launch>
+    <arg name="node_start_delay" default="5.0" /> 
+    <arg name="path" default="bebop" />
+    <arg name="res" default="426,240" />
+    <node pkg="TFG-Bebop-YOLO" type="main.py" name="bebop_track" args="$(arg path) $(arg res)" output="screen" launch-prefix="bash -c 'sleep $(arg node_start_delay); $0 $@'" />
+</launch>

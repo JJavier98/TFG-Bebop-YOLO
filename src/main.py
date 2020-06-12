@@ -4,23 +4,28 @@
 from __future__ import division, print_function, absolute_import
 
 from timeit import time
+import os
+import sys
 import warnings
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
+import rospy
 from PIL import Image
-from yolo import YOLO
+from cnn.yolo import YOLO
 
 from deep_sort import preprocessing
 from deep_sort import nn_matching
 from deep_sort.detection import Detection
 from deep_sort.tracker import Tracker
 from tools import generate_detections as gdet
-from videocaptureasync import VideoCaptureAsync
-from reactivebebop import ReactiveBebop
-from videoreader import VideoReader
+from video_reader.videocaptureasync import VideoCaptureAsync
+from bebop.reactivebebop import ReactiveBebop
+from video_reader.videoreader import VideoReader
 import imutils.video
 import argparse
+
+current_path=os.path.dirname(os.path.abspath(__file__))
 
 # cosntruimos los argumentos
 parser = argparse.ArgumentParser(description='Bebop Tracking Script')
@@ -33,22 +38,32 @@ parser.add_argument("--interval", default=3, help='Cada cuántos fotogramas hace
 parser.add_argument("--res", default='original', help='resolucion del video indicado')
 parser.add_argument("--output", default=None, help="Path y nombre del archivo donde guardaremos la salida del tracker")
 parser.add_argument("--fps_out", default=5, help="FPS del vídeo de salida. Más fps -> cámara rápida. Menos fps -> cámara lenta")
-args = parser.parse_args()
 
 warnings.filterwarnings('ignore')
 
 def main(yolo):
-    path = args.path
-    res = args.res
+    try:
+        args = parser.parse_args()
+        path = args.path
+        res = args.res
+        output = args.output
+        sync = args.sync
+        interval = int(args.interval)
+    except:
+        args = rospy.myargv(argv=sys.argv)
+        path = args[1]
+        res = args[2]
+        output = None
+        sync = False
+        interval = 3
+
     if res=='original':
         print('Debe indicar la resolución: width,heigh')
         exit()
     if res!='original':
         res = res.split(',')
         res = (int(res[0]), int(res[1]))
-    output = args.output
-    sync = args.sync
-    interval = int(args.interval)
+
     if interval<=0: interval = 1
 
     max_track_ls=[0]
@@ -63,7 +78,7 @@ def main(yolo):
     nms_max_overlap = 1.0
     
     # Deep SORT
-    model_filename = 'model_data/mars-small128.pb'
+    model_filename = current_path+'/../model_data/mars-small128.pb'
     encoder = gdet.create_box_encoder(model_filename,batch_size=1)
     
     metric = nn_matching.NearestNeighborDistanceMetric("cosine", max_cosine_distance, nn_budget)

@@ -6,6 +6,7 @@ Run a YOLO_v3 style detection model on test images.
 
 import colorsys
 import os
+current_path=os.path.dirname(os.path.abspath(__file__))
 import random
 from timeit import time
 from timeit import default_timer as timer  ### to calculate FPS
@@ -18,11 +19,12 @@ from PIL import Image, ImageFont, ImageDraw
 from yolo3.model import yolo_eval
 from yolo3.utils import letterbox_image
 
+
 class YOLO(object):
     def __init__(self):
-        self.model_path = 'model_data/yolo.h5'
-        self.anchors_path = 'model_data/yolo_anchors.txt'
-        self.classes_path = 'model_data/coco_classes.txt'
+        self.model_path = current_path+'/../../model_data/yolo.h5'
+        self.anchors_path = current_path+'/../../model_data/yolo_anchors.txt'
+        self.classes_path = current_path+'/../../model_data/coco_classes.txt'
         self.score = 0.5
         self.iou = 0.5
         self.class_names = self._get_class()

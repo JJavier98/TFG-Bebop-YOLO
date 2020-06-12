@@ -1,0 +1,5 @@
+<?xml version="1.0"?>
+<launch>
+    <include file="/home/jjavier/bebop_ws/src/bebop_autonomy/bebop_driver/launch/bebop_nodelet.launch" />
+    <include file="/home/jjavier/bebop_ws/src/TFG-Bebop-YOLO/launch/track_cam.launch"/>
+</launch>
