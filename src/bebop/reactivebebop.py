@@ -3,7 +3,7 @@ import threading
 import time
 import roslib
 try:
-	roslib.load_manifest('msgs_to_cv2')
+	roslib.load_manifest('TFG-Bebop-YOLO')
 except:
 	pass
 import rospy

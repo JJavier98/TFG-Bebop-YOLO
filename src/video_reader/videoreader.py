@@ -6,7 +6,7 @@ import time
 import roslib
 import imutils.video
 try:
-	roslib.load_manifest('msgs_to_cv2')
+	roslib.load_manifest('TFG-Bebop-YOLO')
 except:
 	pass
 import rospy
