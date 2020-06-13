@@ -132,4 +132,7 @@ videos/
 output/
 *.h5
 
+doc/memoria/*
+!doc/memoria/proyecto.pdf
+
 
