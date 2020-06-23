@@ -77,7 +77,8 @@ class VideoReader:
 	def callback2(self,data):
 		if not go_read:
 			try:
-				self.frame = cv2.resize(self.bridge.imgmsg_to_cv2(data, "bgr8"), (self.w, self.h), interpolation=cv2.INTER_NEAREST)
+				img = self.bridge.imgmsg_to_cv2(data, "bgr8")
+				self.frame = cv2.resize(img, (self.w, self.h), interpolation=cv2.INTER_NEAREST)
 			except CvBridgeError as e:
 				print(e)
 
