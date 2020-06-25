@@ -134,8 +134,9 @@ def main(yolo):
 
                 reader.setIniTime()
                 image = Image.fromarray(frame[...,::-1])  # bgr to rgb
-                boxs = yolo.detect_image(image)[0]
-                confidence = yolo.detect_image(image)[1]
+                #boxs = yolo.detect_image(image)[0]
+                #confidence = yolo.detect_image(image)[1]
+                boxs,confidence = yolo.detect_image(image)
 
                 features = encoder(frame,boxs)
 
