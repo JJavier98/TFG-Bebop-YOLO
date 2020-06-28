@@ -53,9 +53,9 @@ def main(yolo):
         args = rospy.myargv(argv=sys.argv)
         path = args[1]
         res = args[2]
-        output = None
-        sync = False
-        interval = 3
+        output = None if args[3]=='None' else args[3]
+        sync = True if args[4]=='True' else False
+        interval = int(args[5])
 
     if res=='original':
         print('Debe indicar la resolución: width,heigh')
@@ -114,10 +114,12 @@ def main(yolo):
 
     contador=0
     con_cam=False
-    while True:
+    ret1 = True
+    ret2 = True
+    while ret1 and ret2:
         ret1, frame1 = readers[0].read()  # frame shape 640*480*3
         frames=[frame1]
-        
+
         if not ret1:
             break
         
@@ -214,12 +216,13 @@ def main(yolo):
         if output!=None:
             number = 1
             try:
-                f = open('output/'+output+'.txt', "r")
+                print(current_path+'/../output/'+output+'.txt')
+                f = open(current_path+'/../output/'+output+'.txt', "r")
                 number = int(f.read().split('*')[-2])+1
                 f.close()
             except: pass
             try:
-                f = open('output/'+output+'.txt', "a")
+                f = open(current_path+'/../output/'+output+'.txt', "a")
                 f.write('Ejecución: '+str(number)+'\n')
                 f.write('Título: '+str(titu)+'\n')
                 f.write('res: '+str(res)+'\n')
@@ -227,6 +230,7 @@ def main(yolo):
                 f.write('Min FPS: '+str(min_fps)+'\n')
                 f.write('Mean FPS: '+str(sum(fps_list)/len(fps_list))+'\n')
                 f.write('Max track: '+str(max_track)+'\n')
+                f.write('Interval: '+str(interval)+'\n')
                 f.write('*'+str(number)+'*\n')
                 f.close()
             except: pass

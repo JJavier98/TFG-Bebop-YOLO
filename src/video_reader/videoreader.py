@@ -14,6 +14,8 @@ from std_msgs.msg import String
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge, CvBridgeError
 from videocaptureasync import VideoCaptureAsync
+import os
+current_path=os.path.dirname(os.path.abspath(__file__))
 
 go_read=False
 
@@ -49,13 +51,11 @@ class VideoReader:
 			self.w = res[0]
 			
 		if write_path!=None:
-			write_path+=str(res)+'.avi'
-			if write_path[:7]!='output/':
-				write_path = 'output/'+write_path
+			write_path=current_path+'/../../output/'+write_path+str(res)+'.avi'
 			self.writable=True
 
 			fourcc = cv2.VideoWriter_fourcc(*'XVID')
-			self.out = cv2.VideoWriter(write_path, fourcc, 5, (self.w, self.h)) # path example: yolo_demo.avi
+			self.out = cv2.VideoWriter(write_path, fourcc, 15, (self.w, self.h)) # path example: yolo_demo.avi
 			#self.frame_index = -1
 		else:
 			self.writable=False
