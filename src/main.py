@@ -167,18 +167,18 @@ def main(yolo):
                 
                 if titu=='bebop':
                     bebop.update_tracks(confirmed_tracks)
+                    reader.write(frame)
                 elif titu=='cam':
                     bebop.update_cam_tracks(confirmed_tracks)
 
                 for det in detections:
                     bbox = det.to_tlbr()
                     score = "%.2f" % round(det.confidence * 100, 2)
-                    cv2.rectangle(frame,(int(bbox[0]), int(bbox[1])), (int(bbox[2]), int(bbox[3])),(255,0,0), 2)
+                    #cv2.rectangle(frame,(int(bbox[0]), int(bbox[1])), (int(bbox[2]), int(bbox[3])),(255,0,0), 2)
                     cv2.putText(frame, score + '%', (int(bbox[0]), int(bbox[3])), 0, 5e-3 * 130, (0,255,0),2)
                 
                     
                 cv2.imshow(titu, frame)
-                reader.write(frame)
 
                 fps = reader.getFPS()
                 if fps < min_fps_ls[i]:

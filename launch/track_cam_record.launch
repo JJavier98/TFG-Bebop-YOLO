@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <launch>
     <arg name="node_start_delay" default="5.0" /> 
-    <arg name="path" default="bebop" />
+    <arg name="path" default="bebop_cam" />
     <arg name="res" default="426,240" />
     <arg name="output" default="bebop/bebop" />
     <arg name="sync" default="False" />
