@@ -67,9 +67,9 @@ def main(yolo):
     if interval<=0: interval = 1
 
     max_track_ls=[0]
-    min_time_ls=[144]
-    max_time_ls=[0]
-    time_list_ls=[[]]
+    min_fps_ls=[144]
+    max_fps_ls=[0]
+    fps_list_ls=[[]]
     ntracks_list_ls=[[]]
 
     # Definition of the parameters
@@ -96,9 +96,9 @@ def main(yolo):
     titulos=[path]
     if path=='bebop_cam':
         max_track_ls.append(0)
-        min_time_ls.append(144)
-        max_time_ls.append(0)
-        time_list_ls.append([])
+        min_fps_ls.append(144)
+        max_fps_ls.append(0)
+        fps_list_ls.append([])
         ntracks_list_ls.append([])
 
         metric2 = nn_matching.NearestNeighborDistanceMetric("cosine", max_cosine_distance, nn_budget)
@@ -118,7 +118,6 @@ def main(yolo):
     ret2 = True
     ccc=0
     confirmed=False
-    ini_total_time=time.time()
     while ret1 and ret2:
         ret1, frame1 = readers[0].read()  # frame shape 640*480*3
         frames=[frame1]
@@ -135,34 +134,33 @@ def main(yolo):
         if not sync or contador==interval:
             contador=0
 
-            for i, reader, frame, titu, tracker, time_list, ntracks_list in zip([0,1],readers,frames,titulos,trackers,time_list_ls,ntracks_list_ls):
+            for i, reader, frame, titu, tracker, fps_list, ntracks_list in zip([0,1],readers,frames,titulos,trackers,fps_list_ls,ntracks_list_ls):
 
-                #reader.setIniTime()
-                ini_time=time.time()
+                reader.setIniTime()
+                image = Image.fromarray(frame[...,::-1])  # bgr to rgb
+                #boxs = yolo.detect_image(image)[0]
+                #confidence = yolo.detect_image(image)[1]
                 if ccc%3==0 or not confirmed:
-		            image = Image.fromarray(frame[...,::-1])  # bgr to rgb
-		            #boxs = yolo.detect_image(image)[0]
-		            #confidence = yolo.detect_image(image)[1]
-		            boxs,confidence = yolo.detect_image(image)
+                    boxs,confidence = yolo.detect_image(image)
 
-		            features = encoder(frame,boxs)
+                    features = encoder(frame,boxs)
 
-		            detections = [Detection(bbox, confidence, feature) for bbox, confidence, feature in zip(boxs, confidence, features)]
-		            
-		            # Run non-maxima suppression.
-		            boxes = np.array([d.tlwh for d in detections])
-		            scores = np.array([d.confidence for d in detections])
-		            indices = preprocessing.non_max_suppression(boxes, nms_max_overlap, scores)
-		            detections = [detections[i] for i in indices]
-		            
-		            # Call the tracker
-		            tracker.update(detections)
+                    detections = [Detection(bbox, confidence, feature) for bbox, confidence, feature in zip(boxs, confidence, features)]
+                
+                    # Run non-maxima suppression.
+                    boxes = np.array([d.tlwh for d in detections])
+                    scores = np.array([d.confidence for d in detections])
+                    indices = preprocessing.non_max_suppression(boxes, nms_max_overlap, scores)
+                    detections = [detections[i] for i in indices]
+                
+                    # Call the tracker
+                    tracker.update(detections)
                 tracker.predict()
                 confirmed_tracks = []
                 
-                confirmed=False
                 for track in tracker.tracks:
-                    if not track.is_confirmed() or track.time_since_update > 3:
+                    if not track.is_confirmed() or track.time_since_update > 1:
+                        confirmed=False
                         continue
                     confirmed=True
                     bbox = track.to_tlbr()
@@ -178,27 +176,23 @@ def main(yolo):
                 elif titu=='cam':
                     bebop.update_cam_tracks(confirmed_tracks)
 
-    
-                """
-                for det in detections:
-                    bbox = det.to_tlbr()
-                    score = "%.2f" % round(det.confidence * 100, 2)
-                    #cv2.rectangle(frame,(int(bbox[0]), int(bbox[1])), (int(bbox[2]), int(bbox[3])),(255,0,0), 2)
-                    cv2.putText(frame, score + '%', (int(bbox[0]), int(bbox[3])), 0, 5e-3 * 130, (0,255,0),2)
-                """
+                #if ccc%3==0:
+                #for det in detections:
+                #    bbox = det.to_tlbr()
+                #    score = "%.2f" % round(det.confidence * 100, 2)
+                #    #cv2.rectangle(frame,(int(bbox[0]), int(bbox[1])), (int(bbox[2]), int(bbox[3])),(255,0,0), 2)
+                #    cv2.putText(frame, score + '%', (int(bbox[0]), int(bbox[3])), 0, 5e-3 * 130, (0,255,0),2)
                 
-                    
+
                 cv2.imshow(titu, frame)
 
-                #fps = reader.getFPS()
-                fin_time=time.time()-ini_time
+                fps = reader.getFPS()
+                if fps < min_fps_ls[i]:
+                    min_fps_ls[i]=fps
+                elif fps>max_fps_ls[i]:
+                    max_fps_ls[i]=fps
 
-                if fin_time < min_time_ls[i]:
-                    min_time_ls[i]=fin_time
-                elif fin_time>max_time_ls[i]:
-                    max_time_ls[i]=fin_time
-
-                time_list.append(fin_time)
+                fps_list.append(fps)
                 ntracks_list.append(len(tracker.tracks))
                 #print("FPS = %f"%(fps))
                 ccc+=1
@@ -209,8 +203,6 @@ def main(yolo):
 
         contador+=1
 
-
-    fin_total_time=time.time()-ini_total_time
     for reader in readers:
         reader.stopRead() # termina la lectura del video
         reader.releaseWrite() # termina la escritura de video
@@ -220,14 +212,13 @@ def main(yolo):
     if path=='bebop_cam':
         cv2.destroyWindow('cam')
 
-    for titu, max_track, min_time, max_time, time_list, ntracks_list in zip(titulos,max_track_ls,min_time_ls,max_time_ls,time_list_ls,ntracks_list_ls):
+    for titu, max_track, min_fps, max_fps, fps_list, ntracks_list in zip(titulos,max_track_ls,min_fps_ls,max_fps_ls,fps_list_ls,ntracks_list_ls):
         print('') # para dar buen formato de salida
         print(titu) # para dar buen formato de salida
-        print('Max time: '+str(max_time))
-        print('Min time: '+str(min_time))
-        print('Mean time: '+str(sum(time_list)/len(time_list)))
+        print('Max FPS: '+str(max_fps))
+        print('Min FPS: '+str(min_fps))
+        print('Mean FPS: '+str(sum(fps_list)/len(fps_list)))
         print('Max track: '+str(max_track))
-        print('Real FPS: '+str(len(time_list)/fin_total_time))
 
         if output!=None:
             number = 1
@@ -242,9 +233,9 @@ def main(yolo):
                 f.write('Ejecución: '+str(number)+'\n')
                 f.write('Título: '+str(titu)+'\n')
                 f.write('res: '+str(res)+'\n')
-                f.write('Max time: '+str(max_time)+'\n')
-                f.write('Min time: '+str(min_time)+'\n')
-                f.write('Mean time: '+str(sum(time_list)/len(time_list))+'\n')
+                f.write('Max FPS: '+str(max_fps)+'\n')
+                f.write('Min FPS: '+str(min_fps)+'\n')
+                f.write('Mean FPS: '+str(sum(fps_list)/len(fps_list))+'\n')
                 f.write('Max track: '+str(max_track)+'\n')
                 f.write('Interval: '+str(interval)+'\n')
                 f.write('*'+str(number)+'*\n')
@@ -253,15 +244,15 @@ def main(yolo):
 
         fig, (ax1, ax2) = plt.subplots(2)
         fig.suptitle(titu)
-        ax1.plot(time_list[1:])
-        ax1.set_ylabel('seconds')
+        ax1.plot(fps_list)
+        ax1.set_ylabel('fps')
         ax1.set_xlabel('frame')
-        # ax1.set_title('seconds per frame')
+        ax1.set_title('fps per frame')
 
         ax2.plot(ntracks_list)
         ax2.set_ylabel('tracks')
         ax2.set_xlabel('frame')
-        # ax2.set_title('tracks per frame')
+        ax2.set_title('tracks per frame')
 
         plt.show()
 
