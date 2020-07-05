@@ -6,5 +6,8 @@
     <arg name="output" default="None" />
     <arg name="sync" default="False" />
     <arg name="interval" default="3" />
-    <node pkg="TFG-Bebop-YOLO" type="main.py" name="bebop_track" args="$(arg path) $(arg res) $(arg output) $(arg sync) $(arg interval)" output="screen" launch-prefix="bash -c 'sleep $(arg node_start_delay); $0 $@'" />
+    <arg name="periodo" default="3" />
+    <node pkg="TFG-Bebop-YOLO" type="main.py" name="bebop_track" 
+    args="$(arg path) $(arg res) $(arg output) $(arg sync) $(arg interval) $(arg periodo)" 
+    output="screen" launch-prefix="bash -c 'sleep $(arg node_start_delay); $0 $@'" />
 </launch>

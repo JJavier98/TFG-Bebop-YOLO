@@ -24,6 +24,7 @@ from bebop.reactivebebop import ReactiveBebop
 from video_reader.videoreader import VideoReader
 import imutils.video
 import argparse
+import statistics
 
 current_path=os.path.dirname(os.path.abspath(__file__))
 
@@ -34,16 +35,17 @@ parser.add_argument('--path',default='/dev/video0', help='path del video a usar.
  											\'bebop_cam\' para usar el dron.\
  											\n Si se deja vacio se tomara /dev/video0')
 parser.add_argument("--sync", default=False, help='Si vamos a abrir un vídeo marcar a True')
-parser.add_argument("--interval", default=3, help='Cada cuántos fotogramas hacemos detección')
+parser.add_argument("--interval", default=1, help='Cada cuántos fotogramas hacemos detección')
 parser.add_argument("--res", default='original', help='resolucion del video indicado')
 parser.add_argument("--output", default=None, help="Path y nombre del archivo donde guardaremos la salida del tracker")
-parser.add_argument("--fps_out", default=5, help="FPS del vídeo de salida. Más fps -> cámara rápida. Menos fps -> cámara lenta")
+parser.add_argument("--periodo", default=3, help="Periodo de detección")
 
 warnings.filterwarnings('ignore')
 
 def main(yolo):
     try:
         args = parser.parse_args()
+        periodo = int(args.periodo)
         path = args.path
         res = args.res
         output = args.output
@@ -56,6 +58,7 @@ def main(yolo):
         output = None if args[3]=='None' else args[3]
         sync = True if args[4]=='True' else False
         interval = int(args[5])
+        periodo = int(args[6])
 
     if res=='original':
         print('Debe indicar la resolución: width,heigh')
@@ -64,7 +67,7 @@ def main(yolo):
         res = res.split(',')
         res = (int(res[0]), int(res[1]))
 
-    if interval<=0: interval = 1
+    if interval<0: interval = 1
 
     max_track_ls=[0]
     min_time_ls=[144]
@@ -119,6 +122,7 @@ def main(yolo):
     ccc=0
     confirmed=False
     ini_total_time=time.time()
+    n=0
     while ret1 and ret2:
         ret1, frame1 = readers[0].read()  # frame shape 640*480*3
         frames=[frame1]
@@ -139,7 +143,7 @@ def main(yolo):
 
                 #reader.setIniTime()
                 ini_time=time.time()
-                if ccc%3==0 or not confirmed:
+                if ccc%periodo==0 or not confirmed:
 		            image = Image.fromarray(frame[...,::-1])  # bgr to rgb
 		            #boxs = yolo.detect_image(image)[0]
 		            #confidence = yolo.detect_image(image)[1]
@@ -161,7 +165,7 @@ def main(yolo):
                 confirmed_tracks = []
                 
                 confirmed=False
-                for track in tracker.tracks:
+                for track in tracker.tracks:    
                     if not track.is_confirmed() or track.time_since_update > 3:
                         continue
                     confirmed=True
@@ -174,24 +178,24 @@ def main(yolo):
                 
                 if titu=='bebop':
                     bebop.update_tracks(confirmed_tracks)
-                    reader.write(frame)
                 elif titu=='cam':
                     bebop.update_cam_tracks(confirmed_tracks)
 
     
-                """
                 for det in detections:
                     bbox = det.to_tlbr()
                     score = "%.2f" % round(det.confidence * 100, 2)
-                    #cv2.rectangle(frame,(int(bbox[0]), int(bbox[1])), (int(bbox[2]), int(bbox[3])),(255,0,0), 2)
-                    cv2.putText(frame, score + '%', (int(bbox[0]), int(bbox[3])), 0, 5e-3 * 130, (0,255,0),2)
-                """
-                
+                    cv2.rectangle(frame,(int(bbox[0]), int(bbox[1])), (int(bbox[2]), int(bbox[3])),(255,0,0), 2)
+                    #cv2.putText(frame, score + '%', (int(bbox[0]), int(bbox[3])), 0, 5e-3 * 130, (0,255,0),2)
                     
                 cv2.imshow(titu, frame)
+                reader.write(frame)
 
                 #fps = reader.getFPS()
                 fin_time=time.time()-ini_time
+                n+=1
+                # with open('prueba.txt','a') as f:
+                #     f.write(str(n)+'\t'+str(fin_time)+'\n')
 
                 if fin_time < min_time_ls[i]:
                     min_time_ls[i]=fin_time
@@ -221,13 +225,27 @@ def main(yolo):
         cv2.destroyWindow('cam')
 
     for titu, max_track, min_time, max_time, time_list, ntracks_list in zip(titulos,max_track_ls,min_time_ls,max_time_ls,time_list_ls,ntracks_list_ls):
+        tiempos_deteccion=[t for t in time_list[1:] if t > 0.05]
+        tiempos_tracking=[t for t in time_list[1:] if t < 0.05]
+
+        desvest_deteccion=statistics.stdev(tiempos_deteccion)
+        if periodo>1:
+            desvest_tracking=statistics.stdev(tiempos_tracking)
+
         print('') # para dar buen formato de salida
         print(titu) # para dar buen formato de salida
+        print('Intervalo: '+str(interval))
+        print('Periodo: '+str(periodo))
         print('Max time: '+str(max_time))
         print('Min time: '+str(min_time))
         print('Mean time: '+str(sum(time_list)/len(time_list)))
         print('Max track: '+str(max_track))
         print('Real FPS: '+str(len(time_list)/fin_total_time))
+        print('Desviación Estandar en Detección: '+str(desvest_deteccion))
+        if periodo>1:
+            print('Desviación Estandar en Tracking: '+str(desvest_tracking))
+        print('Frames Totales: '+str(len(time_list)))
+        print('Tiempo total: '+str(fin_total_time))
 
         if output!=None:
             number = 1
@@ -246,23 +264,27 @@ def main(yolo):
                 f.write('Min time: '+str(min_time)+'\n')
                 f.write('Mean time: '+str(sum(time_list)/len(time_list))+'\n')
                 f.write('Max track: '+str(max_track)+'\n')
-                f.write('Interval: '+str(interval)+'\n')
+                f.write('Real FPS: '+str(len(time_list)/fin_total_time)+'\n')
+                f.write('Desviación Estandar en Detección: '+str(desvest_deteccion)+'\n')
+                if periodo>1:
+                    f.write('Desviación Estandar en Tracking: '+str(desvest_tracking)+'\n')
+                f.write('Frames Totales: '+str(len(time_list))+'\n')
+                f.write('Tiempo total: '+str(fin_total_time)+'\n')
+                f.write('Intervalo: '+str(interval)+'\n')
+                f.write('Periodo: '+str(periodo)+'\n')
                 f.write('*'+str(number)+'*\n')
                 f.close()
             except: pass
 
-        fig, (ax1, ax2) = plt.subplots(2)
-        fig.suptitle(titu)
-        ax1.plot(time_list[1:])
-        ax1.set_ylabel('seconds')
-        ax1.set_xlabel('frame')
-        # ax1.set_title('seconds per frame')
+        for x,y in enumerate(time_list[1:]):
+            plt.plot(x, y, 'o',color='cyan')
+        plt.ylabel('segundos')
+        plt.xlabel('frame')
+        plt.show()
 
-        ax2.plot(ntracks_list)
-        ax2.set_ylabel('tracks')
-        ax2.set_xlabel('frame')
-        # ax2.set_title('tracks per frame')
-
+        plt.plot(ntracks_list)
+        plt.ylabel('tracks')
+        plt.xlabel('frame')
         plt.show()
 
 if __name__ == '__main__':
