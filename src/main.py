@@ -287,5 +287,21 @@ def main(yolo):
         plt.xlabel('frame')
         plt.show()
 
+        suave=[]
+        for i in range(len(ntracks_list)):
+            n=0
+            l=0
+            for j in range(i,i+50):
+                try:
+                    n+=ntracks_list[j]
+                    l+=1
+                except:
+                    break
+            suave.append(n/l)
+        plt.plot(suave,'r')
+        plt.ylabel('tracks')
+        plt.xlabel('frame')
+        plt.show()
+
 if __name__ == '__main__':
     main(YOLO())
